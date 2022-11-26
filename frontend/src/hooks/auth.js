@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { axios } from '../api/axios';
+import { Login } from '../actions/Login';
+import { Me } from '../actions/Me';
 import { persistToken, removeToken } from '../utils/persistToken';
 
 // create a context to have a "stored" state that can be passed down to other components without using props
@@ -17,62 +18,31 @@ export const AuthProvider = ({children}) => {
     });
 
     const login = async (email, pass) => {
-        // dev only
-        persistToken('token');
-
-        const user = await fetchMe();
-        setState(prev=>({
-          ...prev,
-          user
-        }));
-
-        return user; 
-
-        //
         try {
-            const res = await axios.post('/login', {email, pass});
-            const { token } = res.data;
-            persistToken(token);
-            const user = await fetchMe();
-            setState(prev=>({
-              ...prev,
-              user
-            }));
+          let { err: loginErr, data}  = await Login(email, pass);
+          if(loginErr) {
+            console.error(loginErr);
+            return;
+          }
+
+          const { token } = data;
+          persistToken(token);
+
+          const { err: meErr, data: user } = await Me();
+          if(meErr) {
+            console.error(loginErr);
+            return;
+          }
+
+          setState(prev=>({ ...prev, user }));
         } catch (err) {
-            console.error(err);
+          console.error(err);
         }
     };
 
     const logout = () =>{ 
         removeToken();
         window.location = '/';  
-    };
-
-    const fetchMe = async () => {
-        // dev only
-        // simulate waiting for server response
-        await new Promise(res => setTimeout(()=>res(), 500));
-        const user = {
-          id: 123,
-          username: 'cool_username',
-          email: 'cool_email',
-          photoURL: 'https://png.pngitem.com/pimgs/s/506-5067022_sweet-shap-profile-placeholder-hd-png-download.png'
-        };
-
-        return user; 
-
-        // request
-        try {
-            const config = {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                },
-            };
-            const { data } = await axios.get('/me', config);
-            return { user: data };
-        } catch (err) {
-            return { err: err.message };
-        }
     };
 
     // check whether or not there is a token that represents the user session 
@@ -95,9 +65,11 @@ export const AuthProvider = ({children}) => {
         };
 
         // send verfication request to get the user
-        fetchMe().then((user, err) => {
+        Me()
+          .then(({err, data: user}) => {
             if (err) {
-                console.error(err);
+              console.error(err);
+              return;
             }
 
             if(ignore) return;
@@ -108,7 +80,7 @@ export const AuthProvider = ({children}) => {
               fetching: false,
               user: user || null,
             }));
-        });
+          });
 
         return () => { ignore=true };
     }, []);
@@ -117,7 +89,7 @@ export const AuthProvider = ({children}) => {
         ...state,
         login,
         logout,
-        fetchMe,
+        fetchMe: Me,
     };
 
     return (

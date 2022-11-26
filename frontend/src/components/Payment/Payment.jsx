@@ -1,63 +1,72 @@
 import React from 'react';
 import { Grid, TextField, Paper, Button, Typography } from '@mui/material';
 import styled from 'styled-components';
+import { PayPalButtons } from '@paypal/react-paypal-js';
+import { bool } from 'prop-types';
 
 const Main = styled.main`
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 1rem;
   background-image: linear-gradient(180deg, #efc8c8 0%, #f9ffff 100%);
 `;
 
 const CustomPaper = styled(Paper)`
+  box-sizing: border-box;
   display: inline-block;
-  padding: 1rem;
   margin: 8rem auto;
 `;
 
-const Payment = () => {
+const Payment = ({ fetched, total }) => {
+  if (!fetched) return <> Cargando... </>;
+
   return (
     <Main>
       <CustomPaper maxWidth='sm'>
-        <Grid container maxWidth='sm' marginX='auto' spacing={2}>
-          <Grid item xs={12}>
-            <Typography
-              variant='h4'
-              variantMapping={{ h3: 'h1' }}
-              textTransform='capitalize'
-            >
-              Pago
-            </Typography>
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label='Numero de tarjeta'
-              placeholder='1234 1234 1234 1234'
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField
-              label='Fecha de expiracion'
-              placeholder='MM / YY'
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField
-              label='CVC'
-              placeholder='CVC'
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <Button variant='contained' color='darkblue' fullWidth>
-              Pagar
-            </Button>
-          </Grid>
+        <Grid
+          container
+          width='100vw'
+          maxWidth='sm'
+          marginX='auto'
+          padding={2}
+          alignItems='stretch'
+          flexDirection='column'
+          gap={3}
+          boxSizing='border-box'
+        >
+          <Typography
+            variant='h4'
+            variantMapping={{ h3: 'h1' }}
+            textTransform='capitalize'
+            width='100%'
+          >
+            Pago - Total: {total}
+          </Typography>
+          <PayPalButtons
+            fundingSource={undefined}
+            createOrder={(data, actions) => {
+              return actions.order
+                .create({
+                  purchase_units: [
+                    {
+                      amount: {
+                        value: total,
+                      },
+                    },
+                  ],
+                })
+                .then((orderId) => {
+                  // Your code here after create the order
+                  return orderId;
+                });
+            }}
+            onApprove={function (data, actions) {
+              return actions.order.capture().then(function () {
+                // Your code here after capture the order
+              });
+            }}
+          />
         </Grid>
       </CustomPaper>
     </Main>

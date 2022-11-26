@@ -4,13 +4,15 @@ import CartComponent from '../../components/Cart/Cart';
 import Navigation from '../../components/Navigation/Navigation';
 import Footer from '../../components/Common/Footer';
 
+import { usePlanner } from '../../hooks/planner';
+
 const Cart = () => {
-  const planner = window.location.href.includes('/planner');
+  const { fetched, fetching, planner } = usePlanner();
 
   return (
     <>
       <Navigation />
-      <CartComponent planner={planner} />
+      <CartComponent fetched={fetched} fetching={fetching} planner={planner} />
       <Footer />
     </>
   );

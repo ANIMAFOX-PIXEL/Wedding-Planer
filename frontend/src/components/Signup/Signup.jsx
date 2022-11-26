@@ -7,6 +7,9 @@ import {
   TextField,
   Button,
   Typography,
+  Select,
+  MenuItem,
+  InputLabel,
 } from '@mui/material';
 
 import styled from 'styled-components';
@@ -43,14 +46,34 @@ const SubmitButton = styled(Button)`
   background-color: #efc8c8 !important;
 `;
 
-const Login = ({ handleChange, handleLogin }) => {
+const Login = ({ handleChange, handleSignup }) => {
   return (
     <Main>
       <Container maxWidth='sm'>
         <Title variant='h4'>
           Unete a <HighlightSpan>Wedding Wish</HighlightSpan>!
         </Title>
-        <PaddedPaper onKeyDown={(e) => e.key === 'Enter' && handleLogin()}>
+        <PaddedPaper onKeyDown={(e) => e.key === 'Enter' && handleSignup()}>
+          <FormControl fullWidth>
+            <TextField
+              label='Tu nombre de usuario'
+              InputLabelProps={{
+                shrink: true,
+              }}
+              variant='standard'
+              onChange={(e) => handleChange('username', e.target.value)}
+            />
+          </FormControl>
+          <FormControl fullWidth>
+            <TextField
+              label='Tu nombre'
+              InputLabelProps={{
+                shrink: true,
+              }}
+              variant='standard'
+              onChange={(e) => handleChange('name', e.target.value)}
+            />
+          </FormControl>
           <FormControl fullWidth>
             <TextField
               label='Tu correo'
@@ -83,7 +106,19 @@ const Login = ({ handleChange, handleLogin }) => {
               onChange={(e) => handleChange('pass2', e.target.value)}
             />
           </FormControl>
-          <SubmitButton variant='contained' onClick={handleLogin}>
+          <FormControl fullWidth>
+            <InputLabel id='select-type'>Tipo de usuario</InputLabel>
+            <Select
+              label='Tipo de usuario'
+              labelId='select-type'
+              defaultValue='buyer'
+              onChange={(e) => handleChange('type', e.target.value)}
+            >
+              <MenuItem value='buyer'>Comprador</MenuItem>
+              <MenuItem value='seller'>Vendedor</MenuItem>
+            </Select>
+          </FormControl>
+          <SubmitButton variant='contained' onClick={handleSignup}>
             Crear Cuenta
           </SubmitButton>
 
@@ -98,7 +133,7 @@ const Login = ({ handleChange, handleLogin }) => {
 
 Login.propTypes = {
   handleChange: func.isRequired,
-  handleLogin: func.isRequired,
+  handleSignup: func.isRequired,
 };
 
 export default Login;

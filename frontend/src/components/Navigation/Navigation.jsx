@@ -14,7 +14,7 @@ import {
   Box,
 } from '@mui/material';
 
-import { Adb as AdbIcon, Menu as MenuIcon } from '@mui/icons-material';
+import { Menu as MenuIcon } from '@mui/icons-material';
 import { useAuth } from '../../hooks/auth';
 
 const pages = [
@@ -27,8 +27,6 @@ const pages = [
     href: '/browse',
   },
 ];
-
-const settings = ['Profile', 'Account', 'Dashboard'];
 
 function Navigation() {
   const [anchorElNav, setAnchorElNav] = useState(null);
@@ -108,31 +106,32 @@ function Navigation() {
                 display: { xs: 'block', md: 'none' },
               }}
             >
-              {pages.map(({ name }) => (
-                <MenuItem key={name} onClick={handleCloseNavMenu}>
+              {pages.map(({ name, href }) => (
+                <MenuItem key={name} href={href} component='a'>
                   <Typography textAlign='center'>{name}</Typography>
                 </MenuItem>
               ))}
             </Menu>
           </Box>
-          <AdbIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
           <Typography
-            variant='h5'
+            variant='h6'
             noWrap
             component='a'
-            href=''
+            href='/'
             sx={{
               mr: 2,
               display: { xs: 'flex', md: 'none' },
               flexGrow: 1,
-              fontFamily: 'monospace',
+              fontFamily: 'Parisienne',
               fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
+              color: '#806941',
               textDecoration: 'none',
+              textTransform: 'capitalize',
+              letterSpacing: '.3rem',
+              textShadow: '0px 2px 2px #806941',
             }}
           >
-            LOGO
+            Ww
           </Typography>
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
             {pages.map(({ name, href }) => (
@@ -154,14 +153,7 @@ function Navigation() {
                 sx={{ p: 0 }}
                 href={user ? undefined : '/login'}
               >
-                <Avatar
-                  alt='Remy Sharp'
-                  src={
-                    user
-                      ? 'https://mui.com/static/images/avatar/2.jpg'
-                      : 'https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png'
-                  }
-                />
+                <Avatar alt='Avatar' />
               </IconButton>
             </Tooltip>
             <Menu
@@ -180,6 +172,15 @@ function Navigation() {
               open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
             >
+              <MenuItem component='a' href='/account'>
+                <Typography textAlign='center'>Account</Typography>
+              </MenuItem>
+
+              {user?.type === 'seller' && (
+                <MenuItem component='a' href='/account'>
+                  <Typography textAlign='center'>Nuevo Producto</Typography>
+                </MenuItem>
+              )}
               <MenuItem onClick={handleLogout}>
                 <Typography textAlign='center'>Logout</Typography>
               </MenuItem>

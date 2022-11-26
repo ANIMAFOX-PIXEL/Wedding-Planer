@@ -77,7 +77,7 @@ const FooterLink = styled.a`
   }
 `;
 
-const Footer = ({ showScrollTop, handleScrollTop }) => {
+const Footer = () => {
   return (
     <Wrapper>
       {/* Social Icons */}
@@ -110,11 +110,6 @@ const Footer = ({ showScrollTop, handleScrollTop }) => {
       </LinksWrapper>
     </Wrapper>
   );
-};
-
-Footer.propTypes = {
-  showScrollTop: bool.isRequired,
-  handleScrollTop: func.isRequired,
 };
 
 export default Footer;

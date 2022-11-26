@@ -4,13 +4,10 @@ import styled from 'styled-components';
 
 import Carousel from 'nuka-carousel';
 
-// development
-import { LoremIpsum } from 'lorem-ipsum';
-
 import { Button, IconButton, Paper, Typography } from '@mui/material';
 import { KeyboardArrowLeft, KeyboardArrowRight } from '@mui/icons-material';
 
-import { func, bool, instanceOf } from 'prop-types';
+import { number, func, bool, instanceOf } from 'prop-types';
 
 const ArticleInfo = styled.section`
   display: inline-block;
@@ -27,11 +24,18 @@ const HorizontalBox = styled.div`
   display: flex;
   padding: 2rem;
   flex-flow: row nowrap;
+  @media (max-width: 1555px) {
+    flex-flow: column nowrap;
+  }
 `;
 
 const InfoBox = styled.div`
   flex: 2 0 0;
   padding: 1rem 2rem;
+  @media (max-width: 1555px) {
+    flex: column;
+    order: 1;
+  }
 `;
 
 const ArticleName = styled.h1`
@@ -74,6 +78,9 @@ const Item = styled.div`
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
+  @media (max-width: 768px) {
+    height: 60px;
+  }
 `;
 
 const CarrouselButton = styled(IconButton)`
@@ -107,25 +114,6 @@ const BuyNowButton = styled(BuyBoxButton)`
   filter: saturate(500%);
 `;
 
-const sampleArray = [
-  'https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRWvuLqWKwvMBNPxutyxnLJsdULDOQxu9mN8lVuBXiVyQ_RB4qTswOYpKhERrxZDSJ17w8Ia4ZBcI9ozAxey9ksfEiKmOruYo2vZhFxX2_QSmNAfOSlyv-W&usqp=CAE',
-  'https://d44ri6pmeripj.cloudfront.net/morilee/wp-content/uploads/2022/04/05172544/product_img_2461_gallery_img_1-scaled.jpg',
-  'https://cdn0.hitched.co.uk/cat/wedding-dresses/elysee-atelier/louvre--mt15_2x_525140.jpg',
-  'https://images.squarespace-cdn.com/content/v1/5b0da1194eddece4753dcc6a/1615913750074-UR6PMGO0OWLF4OLMYUVH/martina-liana.jpg',
-  'https://images.squarespace-cdn.com/content/v1/55f95900e4b00c68109110c7/1625615301247-63A9Z4PK6ISFQBEAT464/blanche_homepage_2021.jpg?format=2500w',
-];
-
-const lorem = new LoremIpsum({
-  sentencesPerParagraph: {
-    max: 8,
-    min: 4,
-  },
-  wordsPerSentence: {
-    max: 16,
-    min: 4,
-  },
-});
-
 const CarouselCard = ({ url, onClick }) => {
   return <Item onClick={onClick} style={{ backgroundImage: `url(${url})` }} />;
 };
@@ -134,17 +122,14 @@ const Article = ({
   fetchedArticle,
   fetchingArticle,
   article,
-  // handleChange,
+  imgIndex,
+  setImgIndex,
+  handleRedirectToPlanner,
 }) => {
-  const [{ curImgIdx }, setState] = useState({
-    curImgIdx: 0,
-  });
-
   // navigation to other routes
   const navigate = useNavigate();
 
-  const handleChange = (key, value) =>
-    setState((prevState) => ({ ...prevState, [key]: value }));
+  if (!fetchedArticle || fetchingArticle) return <></>;
 
   return (
     <ArticleInfo>
@@ -152,7 +137,13 @@ const Article = ({
         <HorizontalBox>
           <MediaBox>
             <ImgContainer>
-              <Img src={sampleArray[curImgIdx]} />
+              <Img
+                src={
+                  article.media[0]
+                    ? `${process.env.REACT_APP_API}${article.media[imgIndex]}`
+                    : 'https://cdn0.hitched.co.uk/cat/wedding-dresses/elysee-atelier/louvre--mt15_2x_525140.jpg'
+                }
+              />
             </ImgContainer>
             <Carousel
               slidesToShow={4}
@@ -174,59 +165,38 @@ const Article = ({
                 </CarrouselButton>
               )}
             >
-              {sampleArray.map((url, idx) => (
+              {article.media.map((media, idx) => (
                 <CarouselCard
-                  key={idx}
-                  url={url}
-                  onClick={() => handleChange('curImgIdx', idx)}
+                  key={media.split('/').at(-1)}
+                  url={`${process.env.REACT_APP_API}${article.media[imgIndex]}`}
+                  onClick={() => setImgIndex(idx)}
                 />
               ))}
             </Carousel>
           </MediaBox>
           <InfoBox>
-            <ArticleName>Vestido de boda bonito</ArticleName>
-            <Typography variant='body1'>
-              {lorem.generateParagraphs(1)}
-            </Typography>
-            <ul>
-              <li>
-                <Typography variant='body2'>
-                  {lorem.generateSentences(2)}
-                </Typography>
-              </li>
-              <li>
-                <Typography variant='body2'>
-                  {lorem.generateSentences(2)}
-                </Typography>
-              </li>
-              <li>
-                <Typography variant='body2'>
-                  {lorem.generateSentences(2)}
-                </Typography>
-              </li>
-              <li>
-                <Typography variant='body2'>
-                  {lorem.generateSentences(2)}
-                </Typography>
-              </li>
-            </ul>
+            <ArticleName>{article.name}</ArticleName>
+            <Typography variant='body1'>{article.description}</Typography>
           </InfoBox>
           <BuyBox>
             <BuyContainer>
               <Typography variant='body2'>
                 <PriceSuperscript>MXN</PriceSuperscript>
-                <PriceUnit>40000</PriceUnit>
-                <PriceSuperscript>00</PriceSuperscript>
+                <PriceUnit>
+                  {article.price.toFixed(2).split('.').at(0)}
+                </PriceUnit>
+                <PriceSuperscript>
+                  {article.price.toFixed(2).split('.').at(-1)}
+                </PriceSuperscript>
               </Typography>
-
-              <BuyNowButton
+              {/* <BuyNowButton
                 variant='outlined'
                 color='rose'
                 fullWidth
                 onClick={() => {
                   const params = new URLSearchParams();
                   params.append(
-                    'addValue',
+                    'product',
                     // if there is no article.id grab the last part of the url as an id
                     article?.id || window.location.href.split('/').pop()
                   );
@@ -234,7 +204,7 @@ const Article = ({
                 }}
               >
                 agregar a carrito
-              </BuyNowButton>
+              </BuyNowButton> */}
               <BuyBoxButton
                 variant='contained'
                 color='rose'
@@ -255,15 +225,7 @@ const Article = ({
                 variant='contained'
                 color='darkblue'
                 fullWidth
-                onClick={() => {
-                  const params = new URLSearchParams();
-                  params.append(
-                    'addValue',
-                    // if there is no article.id grab the last part of the url as an id
-                    article?.id || window.location.href.split('/').pop()
-                  );
-                  navigate(`/planner?${params.toString()}`);
-                }}
+                onClick={handleRedirectToPlanner}
               >
                 agregar a planner
               </BuyBoxButton>
@@ -279,7 +241,9 @@ Article.propTypes = {
   fetchedArticle: bool.isRequired,
   fetchingArticle: bool.isRequired,
   article: instanceOf(Object),
-  handleChange: func.isRequired,
+  imgIndex: number.isRequired,
+  setImgIndex: func.isRequired,
+  handleRedirectToPlanner: func.isRequired,
 };
 
 Article.defaultProps = {

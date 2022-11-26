@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import styled from 'styled-components';
 
-import { bool } from 'prop-types';
+import { object } from 'prop-types';
 
 const Main = styled.main``;
 
@@ -64,20 +64,7 @@ const ButtonContainer = styled.div`
   justify-content: flex-end;
 `;
 
-const cartItems = [
-  {
-    url: 'https://www.wed2b.com/media/catalog/product/r/i/rion-sheath-wedding-dress-back-signature.jpg',
-    name: 'Vestido bonito',
-    price: 500.4,
-  },
-  {
-    url: 'https://cdn0.hitched.co.uk/cat/wedding-dresses/elysee-atelier/louvre--mt15_2x_525140.jpg',
-    name: 'Vestido bonito 2',
-    price: 299.99,
-  },
-];
-
-const Cart = ({ planner }) => {
+const Cart = ({ fetched, fetching, planner }) => {
   return (
     <Main>
       <Grid container maxWidth='md' marginX='auto' marginY={10}>
@@ -86,32 +73,38 @@ const Cart = ({ planner }) => {
           variantMapping={{ h3: 'h1' }}
           textTransform='capitalize'
         >
-          {planner ? 'planner' : 'carrito de compras'}
+          planner
         </Typography>
         <FullPaper>
           <Table>
-            {cartItems.map((item) => (
-              <Row key={item.name}>
-                <TableCellTop>
-                  <RowImg src={item.url} />
-                </TableCellTop>
-                <TableCellTop>
-                  <Typography variant='h6'> {item.name} </Typography>
-                  <Typography variant='body2'> {item.name} </Typography>
-                </TableCellTop>
-                <TableCellTop>
-                  <ProductPrice>
-                    <CurrencySymbol>$</CurrencySymbol>
-                    <PriceInteger>
-                      {item.price.toFixed(2).split('.').at(0)}
-                    </PriceInteger>
-                    <PriceCents>
-                      {item.price.toFixed(2).split('.').at(-1)}
-                    </PriceCents>
-                  </ProductPrice>
-                </TableCellTop>
-              </Row>
-            ))}
+            {fetched &&
+              planner?.products?.map((item) => (
+                <Row key={item._id}>
+                  <TableCellTop>
+                    <RowImg
+                      src={`${process.env.REACT_APP_API}${item.media[0]}`}
+                    />
+                  </TableCellTop>
+                  <TableCellTop>
+                    <Typography variant='h6'> {item.name} </Typography>
+                    <Typography variant='body2'>
+                      {' '}
+                      {item.description}{' '}
+                    </Typography>
+                  </TableCellTop>
+                  <TableCellTop>
+                    <ProductPrice>
+                      <CurrencySymbol>$</CurrencySymbol>
+                      <PriceInteger>
+                        {item.price.toFixed(2).split('.').at(0)}
+                      </PriceInteger>
+                      <PriceCents>
+                        {item.price.toFixed(2).split('.').at(-1)}
+                      </PriceCents>
+                    </ProductPrice>
+                  </TableCellTop>
+                </Row>
+              ))}
           </Table>
         </FullPaper>
         <ButtonContainer>
@@ -125,7 +118,7 @@ const Cart = ({ planner }) => {
 };
 
 Cart.propTypes = {
-  planner: bool.isRequired,
+  planner: object.isRequired,
 };
 
 export default Cart;

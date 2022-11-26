@@ -1,17 +1,10 @@
-import { Navigate, useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 
-export const withRouteParams = (Component, config={
-  requiredParams: [],
-  fallback: '/'
-}) => 
+export const withRouteParams = (Component) => 
   props => {
     const params = useParams();
-    const keys = Object.keys(params);
-    if (!config.requiredParams.every(x=>keys.includes(x))) {
-      return <Navigate to={config.fallback} />;
-    }
-
+    const [searchParams] = useSearchParams();
     return (
-      <Component params={params} {...props}/>
+      <Component params={params} searchParams={searchParams} {...props}/>
     );
   }
