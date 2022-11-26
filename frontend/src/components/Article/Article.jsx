@@ -168,7 +168,7 @@ const Article = ({
               {article.media.map((media, idx) => (
                 <CarouselCard
                   key={media.split('/').at(-1)}
-                  url={`${process.env.REACT_APP_API}${article.media[imgIndex]}`}
+                  url={`${process.env.REACT_APP_API}${media}`}
                   onClick={() => setImgIndex(idx)}
                 />
               ))}
