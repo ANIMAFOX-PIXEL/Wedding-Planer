@@ -1,126 +1,117 @@
 const jwt = require('jsonwebtoken');
-const { name, internet, image, datatype } = require('faker');
+const { getUser, getUsers, removeUser, createUser, changeUser } = require('../data/controller/user');
+const { compareSync } = require('bcryptjs');
+const { v4:uuid } = require('uuid');
 
-async function userCreate(username, email, name, password){
+async function userCreate(username, email, name, password, type) {
     try {
-        // asume password awas encrypted and user uploaded to db
-        const data = {
-            id: datatype.uuid(),
-            username,
-            name,
-            email,
-            profilePic: image.imageUrl(),
-        };
+        const users = await getUsers( { $or: [{username}, {email}] });
+        if (users.length !== 0)
+            return { code: 400, err: 'User exists already' };
 
-        return {code: 200, data};
+        const data = await createUser({ username, email, name, password, type });
+
+        return { code: 200, data };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function userFind(id) {
+    try {
+        const data = await getUser({ _id: id }).populate('profilePic');
+        if (data === null)
+            return { code: 404, err: 'User not found' };
+
+        return { code: 200, data };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function userAll() {
+    try {
+        const data = await getUsers({}).populate('profilePic');
+
+        if (data.length === 0) {
+            return { code: 404, err: 'No users found' }; 
+        }
+
+        return { code: 200, data };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function userUpdate(id, updatedData) {
+    try {
+        const user = await getUser({ _id: id });
+        if (user===null)
+            return { code: 404, err: 'User not found' };
+
+        Object.keys(updateData).forEach( key => user[key] = updatedData[key] );
+        user.save();
+
+        return { code: 200 };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function userDelete(id) {
+    try {
+        const user = await getUser({ _id : id });
+        if (user===null)
+            return { code: 404, err: 'User not found'};
+
+        await removeUser({ _id: id });
+        
+        return { code: 200 };
     } catch (e) {
         return {code: 500, err: e.message};
     }
 }
 
-async function userFind(id){
+async function userSearch(query, limit=40, page=0) {
     try {
-        // asume password was encrypted and user uploaded to db
-        const data = {
-            id,
-            username: internet.userName(),
-            email: internet.email(),
-            profilePic: image.imageUrl(),
-            name: name.findName()
-        };
+        const data = await getUsers({ $text: query }).limit(limit).skip(page * limit);
+        if (data.length === 0) {
+            return { code: 400, err: 'No results' };
+        }
 
-        return {code: 200, data};
+        return { code: 200, data };
     } catch (e) {
-        return {code: 500, err: e.message};
+        return { code: 500, err: e.message };
     }
 }
 
-async function userAll(){
-    try {
-        const data = Array.from('_'.repeat(40)).map(()=>({
-            id: datatype.uuid(), 
-            username: internet.userName(),
-            email: internet.email(),
-            profilePic: image.imageUrl(),
-            name: name.findName()
-        }));
-
-        return {code: 200, data};
-    } catch (e) {
-        return {code: 500, err: e.message};
-    }
-}
-
-async function userUpdate(id, updateData){
-    try {
-        // asume password awas encrypted and user uploaded to db
-        const data = {
-            id,
-            username: internet.userName(),
-            email: internet.email(),
-            profilePic: image.imageUrl(),
-            name: name.findName(),
-            ...updateData
-        };
-
-        return {code: 200, data};
-    } catch (e) {
-        return {code: 500, err: e.message};
-    }
-}
-
-async function userDelete(id){
-    try {
-        const data = {
-            id,
-            username: internet.userName(),
-            email: internet.email(),
-            profilePic: image.imageUrl(),
-            name: name.findName()
-        };
-
-        return {code: 200, data};
-    } catch (e) {
-        return {code: 500, err: e.message};
-    }
-}
-
-// Search
-async function userSearch(query){
-    const q = query.toLowerCase();
-    try {
-        const data = Array.from('_'.repeat(40)).map(()=>({
-            id: datatype.uuid(), 
-            username: internet.userName(),
-            email: internet.email(),
-            profilePic: image.imageUrl(),
-            name: name.findName()
-        }))
-        .filter( x=> x.name.toLowerCase().includes(q) || x.username.toLowerCase().includes(q));
-
-        return {code: 200, data};
-    } catch (e) {
-        return {code: 500, err: e.message};
-    }
-}
-
-// Auth
 async function userLogin(email, password){
     try {
-        const user = {
-            id: datatype.uuid(),
-            username: internet.userName(),
-            email,
-            profilePic: image.imageUrl(),
-            name: name.findName()
-        };
+        const user = await getUser({email});
+        if (user===null)
+            return { code: 404, err: 'User not found'};
 
-        const token = jwt.sign( {user}, process.env.SECRET, {expiresIn: "3y"});
+        if (!compareSync(password, user.password))
+            return { code: 401, err: 'Wrong email or password' };
+        
+        const id = uuid();
+        const token = jwt.sign( {
+            typ: 'auth',
+            dat: {
+                id,
+                user: user._id,
+            },
+            iat: new Date().getTime(),
+        }, process.env.SECRET, { expiresIn: "3y" });
+
+        user.authTokenId = id;
+        user.save();
+
         const data = { token };
 
-        return {code: 200, data};
+        return { code: 200, data };
     } catch (e) {
-        return {code: 500, err: e.message};
+        return { code: 500, err: e.message };
     }
 }
 
@@ -130,8 +121,6 @@ module.exports = {
     userAll,
     userUpdate,
     userDelete,
-
     userSearch,
-
     userLogin,
 };

@@ -1,24 +1,41 @@
-const { datatype } = require('faker');
-const userService = require('./user.service');
-const productService = require('./product.service');
+const { getProduct, getProducts } = require('../data/controller/product');
+const { getUser, changeUser } = require('../data/controller/user');
+const { createPlanner, getPlanner } = require('../data/controller/planner');
+const { plannerState } = require('../data/enums/plannerState');
 
-async function plannerCreate(userid, date, productids=[]){
+const productMediaToURL = product => 
+  product.media.map( media => `/media-read/${media._id}`);
+
+async function plannerCreate(userid, date, productids = []) {
     try {
+        const products = await getProducts({ _id: { $in: productids } });
 
-        const {code, err, data:products} = await productService.productFindMultiple(...productids);
-        if(err)
-            return {code, err};
+        const user = await getUser({ _id: userid });
+        if (!user)
+            return { code: 404, err: 'User not found' };
 
-        const {code:userCode, err:userErr, data:user } = await userService.userFind(userid);
-        if(userErr) 
-            return {code: userCode, err: userErr};
+        const planner = await getPlanner({user: user._id}).populate('products');
 
-        const data = {
-            id: datatype.uuid(),
-            products,
-            date: date,
-            state: 'in progress',
-        };
+        if (planner) 
+          return { code: 200, data: {
+            ...planner.toObject(), 
+            products: planner.products.map(product => ({
+              ...product.toObject(), 
+              media: productMediaToURL(product)
+            }))
+          }};
+
+        const data = await createPlanner({
+            products: products.map(x => x._id),
+            user: user._id,
+            date,
+            state: plannerState.inProgress,
+        })
+
+        await changeUser(
+          { _id: user._id }, 
+          { $set:{ planner: data._id } }
+        );
 
         return { code: 200, data };
     } catch (e) {
@@ -26,148 +43,105 @@ async function plannerCreate(userid, date, productids=[]){
     }
 }
 
-async function plannerFind(id){
-    try{
-        const {productsCode, productsErr, data:allProducts } = await productService.productAll();
-        if(productsErr)
-            return { code: productsCode, err: productsErr };
+async function plannerFind(id) {
+    try {
+        const data =
+            await getPlanner({ _id: id }).populate('products');
 
-        const {code, err, data:product } = await productService.productFind(productid);
-        if(err)
-            return { code, err };
-        
-        const data = {
-            id,
-            products: [...allProducts.slice(0, 5), product],
-            date: datatype.datetime(),
-            state: 'in progress',
-        };
-
-        return { code: 200, data };
-    } catch(e){
-        return { code: 500, err: e.message };
-    } 
-}
-
-// async function plannerFind(id){
-//     try{
-//         const {productsCode, productsErr, data:allProducts } = await productService.productAll();
-//         if(productsErr)
-//             return { code: productsCode, err: productsErr };
-
-//         const {code, err, data:product } = await productService.productFind(productid);
-//         if(err)
-//             return { code, err };
-        
-//         const data = {
-//             id,
-//             products: [...allProducts.slice(0, 5), product],
-//             date: datatype.datetime(),
-//             state: 'in progress',
-//         };
-
-//         return { code: 200, data };
-//     } catch(e){
-//         return { code: 500, err: e.message };
-//     } 
-// }
-
-async function plannerAddProduct(id, productid){
-    try{
-        const {productsCode, productsErr, data:allProducts } = await productService.productAll();
-        if(productsErr)
-            return { code: productsCode, err: productsErr };
-
-        const {code, err, data:product } = await productService.productFind(productid);
-        if(err)
-            return { code, err };
-        
-        const data = {
-            id,
-            products: [...allProducts.slice(0, 5), product],
-            date: datatype.datetime(),
-            state: 'in progress',
-        };
-
-        return { code: 200, data };
-    } catch(e){
+        return { code: 200, data: { ...data, products } };
+    } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function plannerRemoveProduct(id, productid){
-    try{
-        const {productsCode, productsErr, data:allProducts } = await productService.productAll();
-        if(productsErr)
-            return { code: productsCode, err: productsErr };
-        
+async function plannerAddProduct(id, productid) {
+    try {
+        const product = await getProduct({ _id: productid });
+        if (!product)
+            return { code: 404, err: 'Product not found' };
 
-        const data = {
-            id,
-            products: allProducts.slice(0, 5).filter(x=>x.id!==productid),
-            date: datatype.datetime(),
-            state: 'in progress',
-        };
+        const planner = await getPlanner({ _id: id }).populate('products');
+        if (!planner)
+            return { code: 404, err: 'Planner not found' };
 
-        return { code: 200, data };
-    } catch(e){
+        if (planner.products.indexOf(product.id) !== -1)
+            return { code: 400, err: 'Product is already in planner' };
+
+        planner.products = [...planner.products, product.id];
+        await planner.save();
+
+        return { code: 200, data: planner };
+    } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function plannerReschedule(id, date){
-    try{
-        const {productsCode, productsErr, data:allProducts } = await productService.productAll();
-        if(productsErr)
-            return { code: productsCode, err: productsErr };
-        
-        const data = {
-            id,
-            products: allProducts.slice(0, 3),
-            date,
-            state: 'in progress',
-        };
+async function plannerRemoveProduct(id, productid) {
+    try {
+        const product = await getProduct({ _id: id });
+        if (!product)
+            return { code: 404, err: 'Product not found' };
 
-        return { code: 200, data };
-    } catch(e){
+        const planner = await getPlanner({ _id: id });
+        if (!planner)
+            return { code: 404, err: 'Planner not found' };
+
+        if (planner.products.indexOf(product.id) === -1)
+            return { code: 400, err: 'Product is not in planner' };
+
+        planner.products = planner.products.filter(id => id !== productid);
+        await planner.save();
+
+        return { code: 200, data: planner };
+    } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function plannerBuy(id){
-    try{
-        const {productsCode, productsErr, data:allProducts } = await productService.productAll();
-        if(productsErr)
-            return { code: productsCode, err: productsErr };
-        
-        const data = {
-            id,
-            products: allProducts.slice(0, 5),
-            date: datatype.datetime(),
-            state: 'bought',
-        };
+async function plannerReschedule(id, date) {
+    try {
+        const planner = await getPlanner({ _id: id }).populate(['user', 'products']);
+        if (!planner)
+            return { code: 404, err: 'Planner not found' };
 
-        return { code: 200, data };
-    } catch(e){
+        planner.date = date;
+        await planner.save();
+
+        return { code: 200, data: planner };
+    } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function plannerDelete(id){
-    try{
-        const {productsCode, productsErr, data:allProducts } = await productService.productAll();
-        if(productsErr)
-            return { code: productsCode, err: productsErr };
-        
-        const data = {
-            id,
-            products: allProducts.slice(0, 5),
-            date: datatype.datetime(),
-            state: 'deleted',
-        };
+async function plannerBuy(id) {
+    try {
+        const planner = await getPlanner({ _id: id }).populate(['user', 'products']);
+        if (!planner)
+            return { code: 404, err: 'Planner not found' };
 
-        return { code: 200, data };
-    } catch(e){
+        planner.state = plannerState.Bought;
+        planner.save();
+
+        return { code: 200, data: planner };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function plannerDelete(id) {
+    try {
+        const planner = await getPlanner({ _id: id }).populate(['user', 'products']);
+        if (!planner)
+            return { code: 404, err: 'Planner not found' };
+
+        // soft delete
+        // potentially analyze tendencies for customized ads or suggestions
+        // might sell data
+        planner.state = plannerState.Canceled;
+        planner.save();
+
+        return { code: 200, data: planner };
+    } catch (e) {
         return { code: 500, err: e.message };
     }
 }

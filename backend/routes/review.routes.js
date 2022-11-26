@@ -1,10 +1,9 @@
-const express=require('express');
-const app=express();
-const authMiddleware = require('../middleware/auth.middleware');
+const express = require('express');
+const app = express();
 const reviewController = require('../controller/review.controller');
 
-app.post('/api/review-create', authMiddleware, reviewController.reviewCreateOrUpdate);
-app.get('/api/review-product/:id', authMiddleware, reviewController.reviewFromProduct);
-app.delete('/api/review-delete/:id', authMiddleware, reviewController.reviewDelete);
+app.post('/review-create', reviewController.reviewCreateOrUpdate);
+app.get('/review-product/:id', reviewController.reviewFromProduct);
+app.delete('/review-delete/:id', reviewController.reviewDelete);
 
 module.exports = app;

@@ -1,15 +1,32 @@
-const jwt = require('jsonwebtoken');
+const { verify } = require('jsonwebtoken');
+const { getUser } = require('../data/controller/user');
 
-function validateToken(req, res, next){
-	const token = req.get('Authorization').split(' ')[1];
-	jwt.verify(token, process.env.SECRET, (err, decoded)=>{
-		if(err){
-			return res.status(401).json({
-                status:     401,
-				message:    'Authentication token is not valid: ' + err.message
-			});
+function validateToken(req, _res, next) {
+	const authorization = req.get('authorization');
+	if (!authorization) {
+		next();
+		return;
+	}
+
+	const token = authorization.split(' ')[1];
+	verify(token, process.env.SECRET, async (err, payload) => {
+		if (err) {
+			next();
+			return;
 		}
-		req.user = decoded.user;
+
+		const user = await getUser({ _id: payload.dat.user });
+		if (user === null) {
+			next();
+			return;
+		}
+
+		if (user.authTokenId !== payload.dat.id) {
+			next();
+			return;
+		}
+
+		req.user = user;
 		next();
 	});
 }

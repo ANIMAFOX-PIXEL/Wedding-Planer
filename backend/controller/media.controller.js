@@ -1,20 +1,28 @@
 const mediaService = require('../service/media.service');
+const express = require('express');
 
-function validateImageRead(id){
+function validateImageRead(id) {
     return !id ? 'Path must specify image with id' : null;
 }
-async function imageRead(req, res){
+/**
+ * 
+ * @param {express.Request} req 
+ * @param {express.Response} res 
+ * @returns 
+ */
+async function imageRead(req, res) {
     const { id } = req.params;
 
     const userErr = validateImageRead(id);
-    if(userErr)
+    if (userErr)
         return res.status(400).send(userErr);
 
-    const {code, err, data} = await mediaService.mediaFind(id);
-    if(err)
+    const { code, err, data: media } = await mediaService.mediaFind(id);
+    if (err)
         return res.status(code).send(err);
-    
-    return res.status(200).json(data);
+
+    res.setHeader('Content-Type', media.mime);
+    return res.send(media.data);
 }
 
 module.exports = {

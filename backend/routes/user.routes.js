@@ -1,17 +1,17 @@
-const express=require('express');
-const app=express();
-const authMiddleware = require('../middleware/auth.middleware');
+const express = require('express');
+const app = express();
 const userController = require('../controller/user.controller');
 
 // CRUD
-app.post    ('/api/user-create' , userController.userCreate);
-app.get     ('/api/user-read/:id'   , authMiddleware, userController.userRead);
-app.get     ('/api/user-readAll', authMiddleware, userController.userReadAll);
-app.put     ('/api/user-update/:id' , authMiddleware, userController.userUpdate);
-app.delete  ('/api/user-delete/:id' , authMiddleware, userController.userDelete);
+app.post('/user-create', userController.userCreate);
+app.get('/user-read/:id', userController.userRead);
+app.get('/user-readAll', userController.userReadAll);
+app.put('/user-update/:id', userController.userUpdate);
+app.delete('/user-delete/:id', userController.userDelete);
 // Search
-app.get     ('/api/user-search', authMiddleware, userController.userSearch);
+app.get('/user-search', userController.userSearch);
 // Auth
-app.post    ('/api/login', userController.login);
+app.post('/login', userController.login);
+app.get('/me', userController.me);
 
 module.exports = app;

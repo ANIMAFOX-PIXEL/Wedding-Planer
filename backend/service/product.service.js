@@ -1,132 +1,168 @@
-const { commerce, internet, image, datatype } = require('faker');
-const mediaService = require('./media.service');
+const { createMedia } = require('../data/controller/media');
+const { createProduct, getProduct, getProducts } = require('../data/controller/product');
+const { getUser } = require('../data/controller/user');
 
-async function productCreate(userId, name, description, price, tags, files){
+
+const productMediaToURL = product => 
+  product.media.map( media => `/media-read/${media._id}`);
+
+async function productCreate(userId, name, description, price, tags, files = []) {
     try {
-        const resolvedMedia = await Promise.all( files.map(mediaService.mediaCreate) );
-        const filtered = resolvedMedia.filter( result => result.err );
-        if(filtered.length !== 0)
-            return { code: filtered[0].code, err: filtered[0].err };
-        const media = resolvedMedia.map(m=>m.data);
+        const user = await getUser({ _id: userId });
+        if (user === null)
+            return { code: 404, err: 'User not found' };
 
-        const data = {
-            id: datatype.uuid(),
-            userid: userId,
+        // upload media if any
+        const fileUploads = await Promise.allSettled(
+            files.map(
+                file => createMedia({ mime: file.mimetype, data: file.buffer, isURL: false })
+            ),
+        );
+
+        // filtrar solo las imagenes que se pudieron subir adecuadamente
+        const media = fileUploads
+            .filter(upload => upload.status === 'fulfilled')
+            .map(upload => upload.value._id);
+
+        if (media.length === 0)
+            return { code: 500, err: 'Error uploading media' };
+
+        const product = await createProduct({
+            user: user._id,
             name,
+            description,
             price,
             tags,
-            description,
             media
+        });
+
+        if (media.length !== fileUploads.length)
+            return { code: 200, data: { ...product.toJSON(), err: 'Error uploading some files' } };
+
+        return { 
+          code: 200, 
+          data: {
+            ...product.toObject(), 
+            media: productMediaToURL(product)
+          } 
         };
 
-        return { code: 200, data };
-
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function productFind(id){
+async function productFind(id) {
     try {
-        const data = {
-            id,
-            name: commerce.productName(),
-            description: commerce.productDescription(),
-            price: commerce.price(),
-            tags: Array.from('x'.repeat(4)).map(()=>commerce.department()),
-            media: Array.from('x'.repeat(3)).map(()=>image.imageUrl())
+        const product = await getProduct({ _id: id });
+        if (product === null)
+            return { code: 404, err: 'Product not found' };
+
+        return { 
+          code: 200, 
+          data: {
+            ...product.toObject(), 
+            media: productMediaToURL(product)
+          } 
         };
-
-        return { code: 200, data };
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function productFindMultiple(...ids){
+async function productFindMultiple(...ids) {
     try {
-        const data = ids.map(id=>({
-            id,
-            name: commerce.productName(),
-            description: commerce.productDescription(),
-            price: commerce.price,
-            tags: Array.from('x'.repeat(4)).map(()=>commerce.department()),
-            media: Array.from('x'.repeat(3)).map(()=>image.imageUrl())
-        }));
+        let products = await getProducts({ _id: { $in: ids } }).populate('media');
+        if (products.length === 0)
+            return { code: 404, err: 'No products found' };
 
-        return { code: 200, data };
-    } catch (e) {
-        return { code: 500, err: e.message };
-    }
-}
-
-async function productAll(){
-    try {
-        const data = Array.from('x'.repeat(40)).map(()=>({
-            id: datatype.uuid(),
-            name: commerce.productName(),
-            description: commerce.productDescription(),
-            price: commerce.price(),
-            tags: Array.from('x'.repeat(4)).map(()=>commerce.department()),
-            media: Array.from('x'.repeat(3)).map(()=>image.imageUrl())
-        }));
-
-        return { code: 200, data };
-    } catch (e) {
-        return { code: 500, err: e.message };
-    }
-}
-
-async function productUpdate( userid, id, updatedData){
-    try {
-        const data = {
-            id,
-            userid,
-            name: commerce.productName(),
-            description: commerce.productDescription(),
-            price: commerce.price(),
-            tags: Array.from('x'.repeat(4)).map(()=>commerce.department()),
-            media: Array.from('x'.repeat(3)).map(()=>image.imageUrl()),
-            ...updatedData
+        return { 
+          code: 200, 
+          data: 
+            products.map(product => ({
+              ...product.toObject(), 
+              media: productMediaToURL(product)
+            })) 
         };
-
-        return { code: 200, data };
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function productDelete(id){
+async function productAll() {
     try {
-        const data = {
-            id,
-            name: commerce.productName(),
-            description: commerce.productDescription(),
-            price: commerce.price(),
-            tags: Array.from('x'.repeat(4)).map(()=>commerce.department()),
-            media: Array.from('x'.repeat(3)).map(()=>image.imageUrl())
+        const products = await getProducts({}).populate('media');
+        if (products.length === 0)
+            return { code: 404, err: 'No products found' };
+
+        return { 
+          code: 200,
+          data: 
+            products.map(product => ({
+              ...product.toObject(), 
+              media: productMediaToURL(product)
+            })) 
         };
-
-        return { code: 200, data };
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function productSearch(query){
-    const q = query.toLowerCase();
+async function productUpdate(userid, id, updatedData) {
     try {
-        const data = Array.from('x'.repeat(40)).map(()=>({
-            id: datatype.uuid(),
-            name: commerce.productName(),
-            description: commerce.productDescription(),
-            price: commerce.price(),
-            tags: Array.from('x'.repeat(4)).map(()=>commerce.department()),
-            media: Array.from('x'.repeat(3)).map(()=>image.imageUrl())
-        }))
-        .filter(x=> x.name.toLowerCase().includes(q));
+        const product = await getProduct({ _id: id });
+        if (product === null)
+            return { code: 404, err: 'Product not found' };
+        if (product.user !== userid)
+            return { code: 403, err: 'Product must belong to editing user' };
 
-        return { code: 200, data };
+        Object.keys(updateData).forEach(key => product[key] = updatedData[key]);
+        product.save();
+
+        return { code: 200 };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function productDelete(id) {
+    try {
+        const product = await getProduct({ _id: id });
+        if (product === null)
+            return { code: 404, err: 'Product not found' };
+
+        await removeUser({ _id: id });
+
+        return { code: 200 };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function productSearch(query) {
+    try {
+        // const products = await getProducts({ $text: { $search: query } }).populate('media');
+        let products = await getProducts( 
+          { $or: [
+            {tags: { $regex: query || '' }},
+            {name: { $regex: query || '' }},
+          ]}).populate('media');
+
+        if (products.length === 0)
+            return { code: 404, err: 'No products found' };
+
+        products = products.map(product => {
+          const media = product.media.map(
+            mediaEntry => `/media-read/${mediaEntry._id.toString()}`
+          );
+
+          return {
+            ...product.toObject(), 
+            media
+          };
+        });
+
+        return { code: 200, data: products };
     } catch (e) {
         return { code: 500, err: e.message };
     }

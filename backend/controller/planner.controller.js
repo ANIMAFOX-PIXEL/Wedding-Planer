@@ -16,7 +16,7 @@ async function plannerCreate(req, res){
     const userErr =  validatePlannerCreate(userid);
     if(userErr)
         return res.status(400).send(userErr);
-    
+
     const { code, err, data } = await  plannerService.plannerCreate(userid, date, productids);
     if(err)
         return res.status(code).send(err);

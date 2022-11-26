@@ -1,24 +1,22 @@
-const { commerce, datatype} = require('faker');
-const userService = require('./user.service');
-const productService = require('./product.service');
+const { getUser } = require('../data/controller/user');
+const { getProduct } = require('../data/controller/product');
+const { createOrder, getOrder, getOrders } = require('../data/controller/order');
 
 async function orderCreate(userid, productid, quantity){
     try {
-        const {code, err, data:product }= await productService.productFind(productid);
-        if(err)
-            return {code, err};
+        const product = await getProduct({_id: productid });
+        if(product===null)
+            return { code: 404, err: 'Product not found' };
+        const user = await getUser({_id: userid });
+        if(user===null)
+            return { code: 404, err: 'User not found' };
 
-        const {code:userCode, err:userErr, data:user } = await userService.userFind(userid);
-        if(userErr) 
-            return {code: userCode, err: userErr};
-
-        const data = {
-            id: datatype.uuid(),
-            user, 
-            product,
+        const data = await createOrder({
+            user: user._id, 
+            product: product._id,
             quantity,
             total: product.price * quantity
-        };
+        });
 
         return { code: 200, data };
     } catch (e) {
@@ -28,21 +26,9 @@ async function orderCreate(userid, productid, quantity){
 
 async function orderFind(id){
     try {
-        const {code, err, data:[product] }= await productService.productAll();
-        if(err)
-            return {code, err};
-
-        const {code:userCode, err:userErr, data:[user] } = await userService.userAll();
-        if(userErr) 
-            return {code: userCode, err: userErr};
-
-        const data = {
-            id,
-            user,
-            product,
-            quantity: datatype.number(),
-            total: commerce.price(),
-        };
+        const data = await getOrder({ _id : id });
+        if (data===null) 
+            return { code: 404, err: 'Order not found' };
 
         return { code: 200, data };
     } catch (e) {
@@ -52,21 +38,9 @@ async function orderFind(id){
 
 async function orderAll(){
     try {
-        const {code, err, data:products }= await productService.productAll();
-        if(err)
-            return {code, err};
-
-        const {code:userCode, err:userErr, data:users } = await userService.userAll();
-        if(userErr) 
-            return {code: userCode, err: userErr};
-
-        const data = Array.from('x'.repeat(40)).map((x,i)=>({
-            id: datatype.uuid(),
-            user: users[i],
-            product: products[i],
-            quantity: datatype.number(),
-            total: commerce.price(),
-        })).slice(0,5);
+        const data = await getOrders({});
+        if (data.length===0)
+            return { code: 404, err: 'No orders found' };
 
         return { code: 200, data };
     } catch (e) {
@@ -76,21 +50,13 @@ async function orderAll(){
 
 async function orderFromUser(userid){
     try {
-        const {code, err, data:products }= await productService.productAll();
-        if(err)
-            return {code, err};
-
-        const {code:userCode, err:userErr, data:user } = await userService.userFind(userid);
-        if(userErr) 
-            return {code: userCode, err: userErr};
-
-        const data = Array.from('x'.repeat(40)).map((x,i)=>({
-            id: datatype.uuid(),
-            user,
-            product: products[i],
-            quantity: datatype.number(),
-            total: commerce.price(),
-        })).slice(0,3);
+        const user = await getUser({ _id: userid }).populate('orders');
+        if (user===null) 
+            return { code: 404, err: 'User not found' };
+        
+        const data = user.orders;
+        if (data.length===0)
+            return { code: 404, err: 'No orders found' };
 
         return { code: 200, data };
     } catch (e) {

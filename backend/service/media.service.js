@@ -1,28 +1,17 @@
-const { image, datatype } = require('faker');
+const { getMedia } = require('../data/controller/media');
 
-async function mediaCreate(file){
+async function mediaFind(id) {
     try {
-        const url = image.imageUrl();
-        const isURL = true;
-        const data = { id: datatype.uuid(), url, isURL};
-        return {code: 200, data};
-    } catch (e) {
-        return {code: 500, err: e.message};
-    } 
-}
+        const data = await getMedia({ _id: id });
+        if (data === null )
+          return { code: 404, err: 'media not found'};
 
-function mediaFind(id){
-    try {
-        const url = image.imageUrl();
-        const isURL = true;
-        const data = { id, url, isURL};
-        return {code: 200, data};
+        return { code: 200, data };
     } catch (e) {
-        return {code: 500, err: e.message};
-    }    
+        return { code: 500, err: e.message };
+    }
 }
 
 module.exports = {
-    mediaCreate,
     mediaFind
 };

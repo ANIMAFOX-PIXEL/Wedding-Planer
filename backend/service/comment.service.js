@@ -1,145 +1,93 @@
 const { lorem, datatype } = require('faker');
 const userService = require('./user.service');
 const productService = require('./product.service');
+const { getUser } = require('../data/controller/user');
+const { getProduct } = require('../data/controller/product');
+const { createComment, getComment, getComments } = require('../data/controller/comment');
 
-async function commentCreate(userid, productid, content){
-    const { code:userCode, err:userErr, data:user } =  await userService.userFind(userid);
-    if(userErr)
-        return {code: userCode, err: userErr};
-
-    const { code:productCode, err:productErr, data:product } = await productService.productFind(productid);
-    if(productErr)
-        return {code: productCode, err: productErr };
-    
+async function commentCreate(userid, productid, content) {
     try {
-        const data = {
-            id: datatype.uuid(),
-            user,
-            product,
+        const user = await getUser({ _id: userid });
+        if (!user)
+            return { code: 404, err: 'User not found' };
+
+        const product = await getProduct({ _id: productid });
+        if (!product)
+            return { code: 404, err: 'Product not found' };
+
+        const data = await createComment({
+            user: user._id,
+            product: product._id,
             content
-        };
-    
-        return {code: 200, data};
+        });
+
+        return { code: 200, data };
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function commentFind(id){
-    // simulate comment's user
-    const { code:userCode, err:userErr, data:user } =  await userService.userFind(datatype.uuid());
-    if(userErr)
-        return {code: userCode, err: userErr};
-
-    // simulate comment's product
-    const { code:productCode, err:productErr, data:product } = await productService.productFind(datatype.uuid());
-    if(productErr)
-        return {code: productCode, err: productErr };
-        
-        try {
-            const data = {
-                id,
-                user,
-                product,
-                content: lorem.sentence(),
-            };
-        
-            return {code: 200, data};
-        } catch (e) {
-            return { code: 500, err: e.message };
-        }
-}
-
-async function commentFromProduct(productId){
-    const { code:userCode, err:userErr, data:users } =  await userService.userAll();
-    if(userErr)
-        return {code: userCode, err: userErr};
-
-    const { code:productCode, err:productErr, data:product } = await productService.productFind(productId);
-    if(productErr)
-        return {code: productCode, err: productErr };
-    
+async function commentFind(id) {
     try {
-        const data = Array.from('x'.repeat(4)).map((x,i)=>({
-            id: datatype.uuid(),
-            user: users[Math.floor(Math.random()*users.length)],
-            product,
-            content: lorem.sentence(),
-        }));
-    
-        return {code:200, data};
+        const comment = await getComment({ _id: id }).populate(['user', 'product']);
+        return { code: 200, data: comment };
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function commentFromUser(userId){
-    const { code:userCode, err:userErr, data:user } =  await userService.userFind(userId);
-    if(userErr)
-        return {code: userCode, err: userErr};
-
-    const { code:productCode, err:productErr, data:products } = await productService.productAll();
-    if(productErr)
-        return {code: productCode, err: productErr };
-    
+async function commentFromProduct(productId) {
     try {
-        const data = Array.from('x'.repeat(4)).map((x,i)=>({
-            id: datatype.uuid(),
-            user,
-            product: products[Math.floor(Math.random()*products.length)],
-            content: lorem.sentence(),
-        }));
-    
-        return {code:200, data};
+        const product = await getProduct({ _id: productId });
+        if (!product)
+            return { code: 404, err: 'Product not found' };
+
+        const comments = await getComments({ product: product._id }).populate(['user', 'product']);
+
+        return { code: 200, data: comments };
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function commentUpdate(id, content){
-
-    // simulate comment's user
-    const { code:userCode, err:userErr, data:user } =  await userService.userFind(datatype.uuid());
-    if(userErr)
-        return {code: userCode, err: userErr};
-
-    // simulate comment's product
-    const { code:productCode, err:productErr, data:product } = await productService.productFind(datatype.uuid());
-    if(productErr)
-        return {code: productCode, err: productErr };
-
+async function commentFromUser(userId) {
     try {
-        const data = {
-            id,
-            user,
-            product,
-            content
-        };
+        const user = await getUser({ _id: userId });
+        if (!user)
+            return { code: 404, err: 'User not found' };
 
-        return {code:200, data};
+        const comments = await getComments({ user: user._id }).populate(['user', 'product']);
+
+        return { code: 200, data: comments };
     } catch (e) {
         return { code: 500, err: e.message };
     }
 }
 
-async function commentDelete(id){
-    const { code:userCode, err:userErr, data:user } =  await userService.userFind(datatype.uuid());
-    if(userErr)
-        return {code: userCode, err: userErr};
-
-    const { code:productCode, err:productErr, data:product } = await productService.productFind(datatype.uuid());
-    if(productErr)
-        return {code: productCode, err: productErr };
-
+async function commentUpdate(id, content) {
     try {
-        const data = {
-            id,
-            user,
-            product,
-            content: lorem.sentence(),
-        };
+        const comment = await getComment({ _id: id }).populate(['user', 'product']);
+        if (!comment)
+            return { code: 404, err: 'Comment not found' };
 
-        return {code:200, data};
+        comment.content = content;
+        await comment.save()
+
+        return { code: 200, data: comment };
+    } catch (e) {
+        return { code: 500, err: e.message };
+    }
+}
+
+async function commentDelete(id) {
+    try {
+        const comment = await getComment({ _id: id }).populate(['user', 'product']);
+        if (!comment)
+            return { code: 404, err: 'Comment not found' };
+
+        await commentDelete({ _id: comment._id });
+
+        return { code: 200 };
     } catch (e) {
         return { code: 500, err: e.message };
     }
